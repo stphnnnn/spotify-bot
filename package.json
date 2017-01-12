@@ -1,0 +1,16 @@
+{
+  "name": "Spotify Bot",
+  "version": "1.0.0",
+  "description": "",
+  "main": "spotify-bot.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Steve Burtenshaw",
+  "license": "ISC",
+  "dependencies": {
+    "botkit": "^0.4.9",
+    "dotenv": "^4.0.0",
+    "spotify-node-applescript": "^1.0.0"
+  }
+}
