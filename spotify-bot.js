@@ -18,8 +18,14 @@ var bot = controller.spawn({
 checkTrack();
 
 var skip = {};
-var requiredSkips = process.env.SKIPS;
+var requiredSkips = 5;
 var channel = process.env.CHANNEL;
+
+var nothing = {
+  'username': 'Spotify Bot',
+  'icon_emoji': ':musical_note:',
+  'text': "Spotify isn't playing right now..."
+};
 
 function isEmpty(obj){
   return (Object.getOwnPropertyNames(obj).length === 0);
@@ -27,6 +33,10 @@ function isEmpty(obj){
 
 function checkTrack() {
   spotify.getState(function(err, state) {
+    if (err) {
+      console.log(err);
+      return;
+    }
     if (state.state == 'playing' && !isEmpty(skip)) {
       spotify.getTrack(function(err, track) {
         if (track.id != skip.id) {
@@ -47,6 +57,10 @@ function checkTrack() {
 function skipTrack() {
   if (skip.count == requiredSkips) {
     spotify.getState(function(err, state) {
+      if (err) {
+        console.log(err);
+        return;
+      }
       if (state.state == 'playing') {
         spotify.getTrack(function(err, track) {
           if (track.id == skip.id) {
@@ -67,22 +81,36 @@ function skipTrack() {
 }
 
 controller.on('reaction_added', function(bot, event) {
-  if (event.item.ts == skip.ts && event.reaction == '-1') {
-    skip.count++;
+  if (event.item.ts == skip.ts) {
+    if (event.reaction == '-1') {
+      skip.count++;
+    }
+    if (event.reaction == '+1') {
+      skip.count--;
+    }
     skipTrack();
-    console.log(skip);
   }
 });
 
 controller.on('reaction_removed', function(bot, event) {
-  if (event.item.ts == skip.ts && event.reaction == '-1') {
-    skip.count--;
+  if (event.item.ts == skip.ts) {
+    if (event.reaction == '-1') {
+      skip.count--;
+    }
+    if (event.reaction == '+1') {
+      skip.count++;
+    }
     skipTrack();
   }
 });
 
 controller.hears(['skip'], ['direct_message','direct_mention','mention'], function(bot, message) {
   spotify.getState(function(err, state) {
+    if (err) {
+      console.log(err);
+      bot.reply(message, nothing);
+      return;
+    }
     if (state.state == 'playing') {
       spotify.getTrack(function(err, track) {
         if (track.id == skip.id) {
@@ -107,16 +135,22 @@ controller.hears(['skip'], ['direct_message','direct_mention','mention'], functi
             'channel': channel,
             'username': 'Spotify Bot',
             'icon_emoji': ':musical_note:',
-            'text': "A skip vote has been started for *" + track.name + "* by *" + track.artist + "*? Ten :-1: reactions will skip this track."
+            'text': "A skip vote has been started for *" + track.name + "* by *" + track.artist + "*? Vote :+1: to save or :-1: to skip the track."
           }, function(err, res) {
             bot.api.reactions.add({
               'name': '-1',
               'channel': channel,
               'timestamp': res.ts
-            }, function (err){
-              skip.ts = res.ts;
-              skip.id = track.id;
-              skip.count = 1;
+            }, function (err) {
+              bot.api.reactions.add({
+                'name': '+1',
+                'channel': channel,
+                'timestamp': res.ts
+              }, function (err) {
+                skip.ts = res.ts;
+                skip.id = track.id;
+                skip.count = 0;
+              });
             });
           });
         }
@@ -126,15 +160,20 @@ controller.hears(['skip'], ['direct_message','direct_mention','mention'], functi
       var res = {
         'username': 'Spotify Bot',
         'icon_emoji': ':musical_note:',
-        'text': "Nothing is playright right now..."
+        'text': "Spotify isn't playing right now..."
       }
       bot.reply(message, res);
     }
   });
 });
 
-controller.hears(['what song is this', 'what song is playing', 'what is this song', 'what is the music', 'what music is playing', 'what is this music', 'what is playing', 'what is the current track', 'what music is this'], ['direct_message','direct_mention','mention'], function(bot, message) {
+controller.hears(['what(\'?s| is) this song', 'what(\'?s| is) playing', 'what(\'?s| is) this track', 'what song is this', 'what music is this', 'what(\'?s| is) this music'], ['direct_message','direct_mention','mention'], function(bot, message) {
   spotify.getState(function(err, state) {
+    if (err) {
+      console.log(err);
+      bot.reply(message, nothing);
+      return;
+    }
     if (state.state == 'playing') {
       spotify.getTrack(function(err, track) {
         var res = {
@@ -146,12 +185,7 @@ controller.hears(['what song is this', 'what song is playing', 'what is this son
       });
     }
     else {
-      var res = {
-        'username': 'Spotify Bot',
-        'icon_emoji': ':musical_note:',
-        'text': "Nothing is playright right now..."
-      }
-      bot.reply(message, res);
+      bot.reply(message, nothing);
     }
   });
 });
